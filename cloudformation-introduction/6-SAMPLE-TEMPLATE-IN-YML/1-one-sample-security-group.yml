@@ -1,0 +1,46 @@
+---
+AWSTemplateFormatVersion: "2010-09-09" # --This tells you the template version
+Description: Template to create Security group  # --This is to desribe what the template is about
+# --This template and two other templates are used to simulate how [Nested Stacks] work
+# --Nested stacks are stacks created as part of other stacks. You create a nested stack within another stack
+# --Stack A,[Parent-stack] is the root stack for [b, c] and all the other, nested, stacks in the hierarchy.
+# --Nested stacks can themselves contain other nested stacks, resulting in a hierarchy of stacks
+# --For stack B, stack A is both the parent stack, and the root stack.
+# --For stack D, stack C is the parent stack; while for stack C, stack B is the parent stack.
+
+#--------------------------FIRST BORN CHILD [SG-STACK]---------------------------#
+
+Parameters: # --The parameter section is used to avoid hardcoding and to make the template [Dynamic]. [Indent [here] before starting next line]
+  ApplicationName: # --Enter [LogicalName] This ApplicationName will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: The application name  # --This is to desribe what the parameter is about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+
+  VPCId:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: VPC to create the security group into  # --This is to desribe what the parameter about
+    Type: AWS::EC2::VPC::Id  # --This section tells you what type of paramter that is being created.
+
+Resources:  # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  SSHSecurityGroup:  # --Enter [LogicalName]. [Indent [here] before starting next line]
+    Type: AWS::EC2::SecurityGroup  # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      GroupDescription: !Sub Security group for ${ApplicationName} # --The intrinsic function Fn::Sub substitutes variables in an input string with values that you specify.
+      # --In your templates, you can use this function to construct commands or outputs that include values that aren't available until you create or update a stack.
+      # --In other word, !Sub is used here not to hard code the application name here but to make it Dynamic to allow users to enter the name they want.
+      SecurityGroupIngress:   # --Ingress is used to Add an inbound rule to a security group.
+      - CidrIp: "0.0.0.0/25"  # --Allow all traffic [IN] and [OUT] from the Internet
+        FromPort: 22   # --Allow all traffic [IN] from [port-22]
+        ToPort: 22  # --Allow all traffic [OUT] from [port-22]
+        IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+        Description: SSH for Engineering department  # --This is to desribe what this part of the resource is doing
+        -CidrIp: "192.168.0.0/25"
+        FromPort: 22  # --Allow all traffic [IN] from [port-22]
+        ToPort: 22  # --Allow all traffic [OUT] from [port-22]
+        IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+        Description: SSH for HR department # --This is to desribe what this part of the resource is doing
+      VpcId: !Ref VPCId  # --The VPCId here is being Ref direct from the Paramters section. [3]
+
+Outputs: # --The optional Outputs section declares output values that you can import into other stacks (to create cross-stack references)
+  SSHGroupId: # --Enter [LogicalName]. [Indent [here] before starting next line]
+    Value: !Ref SSHSecurityGroup # --Value is use for Referencing a value from the resource section.
+    # --Ref here is being used to get the [LogicalName]=[SSHSecurityGroup] from the resources section and have it displayed on the Outputs section.
+    Description: Id for the SSH Security Group # --This is to desribe what this part of the outputs is doing

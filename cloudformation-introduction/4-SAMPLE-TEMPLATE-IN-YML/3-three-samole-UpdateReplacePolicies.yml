@@ -1,0 +1,19 @@
+# In this template we are going to learn about update retain policy usage while updating cloudformation
+# UpdateReplacePolicy supports --> Delete/Retain/Snapshot
+# Ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-updatereplacepolicy.html
+
+---
+AWSTemplateFormatVersion: '2010-09-09'  # --This tells you the template version
+Description: 'Cloudformation template to create EC2 instance with parameteres'   # --This is to desribe what the template is about
+
+Parameters:  # --The parameter section is used to avoid hardcoding and to make the template [Dynamic]. [Indent [here] before starting next line]
+  BucketName: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Type: String   # --This parameter type is a string. [Type, Default, and Description are in the same line]
+
+Resources: # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  S3Bucket:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::S3::Bucket  # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      BucketName: !Ref BucketName  # --The BucketName here is being Ref from the parameter section. [2]
+    DeletionPolicy: Retain  # --The [Retain] at the front of [DeletionPolicy] indicate that you want retain the bucket during deletion of the stack
+    UpdateReplacePolicy: Retain # --The [Retain] at the front of [UpdateReplacePolicy] indicate that you want retain the bucket during update of the stack

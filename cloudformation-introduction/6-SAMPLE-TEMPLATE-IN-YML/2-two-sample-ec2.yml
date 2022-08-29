@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'  # --This tells you the template version
+Description: 'Template to create EC2 instance' # --This is to desribe what the template is about
+# --This template and two other templates are used to simulate how [Nested Stacks] work
+# --Nested stacks are stacks created as part of other stacks. You create a nested stack within another stack
+# --Stack A,[Parent-stack] is the root stack for [b, c] and all the other, nested, stacks in the hierarchy.
+# --Nested stacks can themselves contain other nested stacks, resulting in a hierarchy of stacks
+# --For stack B, stack A is both the parent stack, and the root stack.
+# --For stack D, stack C is the parent stack; while for stack C, stack B is the parent stack.
+
+#--------------------------SECOND BORN CHILD [INSTANCE-STACK]---------------------------#
+
+Parameters: # --The parameter section is used to avoid hardcoding and to make the template [Dynamic]. [Indent [here] before starting next line]
+  InstanceType: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: Type of the EC2 instance  # --This is to desribe what this parameter is about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    Default: t2.micro  # --The default is used to assigned one specific instancetype to be use by the resource.
+
+  ImageId:  # --Enter [LogicalName] This ImageId will be Ref in the resource section. [Indent [here] before starting next line]
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    Default: ami-0022f774911c1d690 # --The default is used to assigned one specific [AMI] to be use by the resource
+
+
+  SecurityGroupId: # --Enter [LogicalName] This SecurityGroupId will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: URL of the nested stack template  # --This is to desribe what this parameter is about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+
+Resources:  # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  EC2Instance:   #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::EC2::Instance # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      InstanceType: !Ref InstanceType  # --The InstanceType here is being Ref from the Parameters section. [3]
+      # Note we use the pseudo parameter AWS::Region
+      ImageId: !Ref ImageId  # --The ImageId here is being Ref from the parameter section. [1]
+      SecurityGroupIds:  # --The Security GroupId here is being Ref from the Paramters section. [3]
+        - !Ref SecurityGroupId

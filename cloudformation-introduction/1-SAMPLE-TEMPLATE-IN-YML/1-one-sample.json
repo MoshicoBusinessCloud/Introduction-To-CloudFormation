@@ -1,0 +1,28 @@
+---
+Resources:  # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName]
+  WebServer:   #-- this part is for the logicalName. Indent once, then enter [Type:]
+    Type: AWS::EC2::Instance  # -- This section tells you what type of resource that is being created. Type and property are in the same line
+    Properties:   # --Everything that the resource need to operate is under the property section
+      ImageId: "ami-0cff7528ff583bf9a" #--Putting the AMI Id here makes this template haedcoded and must be launched in us-east-1
+      InstanceType: "t2.micro" #--Putting [t2.micro] here makes this template haedcoded
+      KeyName: "commands"  #--Putting keypair here makes this template haedcoded and you must use a keypair from us-east-1
+      BlockDeviceMappings:
+      - DeviceName: "/dev/sdm" #--This is mounting port for which to attach your EBS volume
+        Ebs:
+          VolumeType: "io1" 
+          Iops: 100  # -- IOP is an integer
+          DeleteOnTermination: true  #--This is a Boolean
+          VolumeSize: 8  # ---This is an integer
+  AppServer:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: "ami-0cff7528ff583bf9a"
+      InstanceType: "t2.micro"
+      KeyName: "commands"
+      BlockDeviceMappings:
+      - DeviceName: "/dev/sdm"
+        Ebs:
+          VolumeType: "io1"
+          Iops: 100
+          DeleteOnTermination: true
+          VolumeSize: 10

@@ -1,0 +1,33 @@
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-prereqs-self-managed.html
+
+AWSTemplateFormatVersion: 2010-09-09  # --This tells you the template version
+Description: Configure the AWSCloudFormationStackSetAdministrationRole to enable use of AWS CloudFormation StackSets.
+#--AWS CloudFormation StackSets extends the capability of stacks by enabling you to create, update, or...
+# --delete stacks across multiple accounts and AWS Regions with a single operation. Using an administrator...
+# --account, you define and manage an AWS CloudFormation template, and use the template as the basis...
+# --for provisioning stacks into selected target accounts across specified AWS Regions.
+
+Resources: # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  AdministrationRole:  # --Enter [LogicalName]. [Indent [here] before starting next line]
+    Type: AWS::IAM::Role  # --This section tells you what type of resource that is being created.
+    Properties: # --Everything that the resource need to operate is under the property section
+      RoleName: AWSCloudFormationStackSetAdministrationRole # --The name of the role [The [Role] here is being given Administrator authorization]
+      AssumeRolePolicyDocument: # --As an [Administrator] the role has been given the power to [AssumeRole] [To act on bahalf of]
+        Version: 2012-10-17 # --To see the document with taht exact policy, [Version: 2012-10-17]
+        Statement: # --Statement of what that is being [Allowed] and what service is allowed to take this actions on our behalf.
+          - Effect: Allow  # --What ever effect this is going to have, it allowed.
+            Principal:
+              Service: cloudformation.amazonaws.com # --Thia is the service that is allowed to take the action on our behalf
+            Action:
+              - sts:AssumeRole # --This is the action that will be carried out on our behalf
+      Path: / # --This is the path that is being given to the role
+      Policies:
+        - PolicyName: AssumeRole-AWSCloudFormationStackSetExecutionRole # --The name of the role [The [Role] here is being given Administrator authorization]
+          PolicyDocument: # --This policy granting [AssumeRole] and the role it would be assuming is [ExecutionRole]
+            Version: 2012-10-17 # --To see the document with taht exact policy, [Version: 2012-10-17]
+            Statement: # --Statement of what that is being [Allowed] and what service is allowed to take this actions on our behalf.
+              - Effect: Allow  # --What ever effect this is going to have, it allowed.
+                Action:
+                  - sts:AssumeRole  # --This is the action that will be carried out on our behalf
+                Resource:
+                  - "arn:*:iam::*:role/AWSCloudFormationStackSetExecutionRole" # --This is signed copy of the [Agreement]

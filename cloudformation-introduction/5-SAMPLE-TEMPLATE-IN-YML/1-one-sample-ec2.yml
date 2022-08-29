@@ -1,0 +1,17 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"  # --This tells you the template version
+Description: Template to create EC2 instance  # --This is to desribe what the template is about
+# --The nest 3 template is used to simulate how [ChangeSets] work
+# --When you need to update a stack, understanding how your changes will affect running resources before you implement..
+# --them can help you update stacks with confidence.
+# --Change sets allow you to preview how proposed changes to a stack might impact your running resources,..
+# --for example, whether your changes will delete or replace any critical resources,..
+# --AWS CloudFormation makes the changes to your stack only when you decide to execute the change set, allowing you to decide..
+# --whether to proceed with your proposed changes or explore other changes by creating another change set.
+Resources:  # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  MyInstance:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Type: AWS::EC2::Instance  # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      AvailabilityZone: us-east-1a  # --This is the [AZ][us-east-1] where the instance will bo created. This is hard-coded
+      ImageId: "ami-0022f774911c1d690" # --This [AMI] is from the same [AZ][us-east-1] where the instance will bo created. This is hard-coded
+      InstanceType: t2.micro  # --A compute instance can be software or hardware which can run code, for example a CPU or GPU.

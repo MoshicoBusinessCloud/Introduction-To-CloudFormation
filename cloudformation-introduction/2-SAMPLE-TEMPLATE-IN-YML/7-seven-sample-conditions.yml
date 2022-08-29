@@ -1,0 +1,155 @@
+# In this template we are going to learn about conditions
+# Using and advantages of conditions
+# Fn::Equals function https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-conditions.html
+# Ref: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/conditions-section-structure.html
+# Ref: https://stackoverflow.com/questions/39086361/multiple-conditions-in-cloud-formation-resource-creation
+---
+AWSTemplateFormatVersion: '2010-09-09'  # --This tells you the template version
+Description: 'Cloudformation template to create EC2 instance'  # --This is to desribe what the template is about
+Parameters:  # --The parameter section is used to avoid hardcoding and to make the template [Dynamic]. [Indent [here] before starting next line]
+  Environment:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: "Application environment"  # --This is to desribe what the parameter about
+    Type: String   # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    Default: development   # --The default is used to assigned a specific property to be use to create the resource.
+    AllowedValues:  # --Allowed value is used to define what types of properties[instancetypes] that ia allowed be use.
+      - development   # --These are the allowed values to choose from when creating your resources.
+      - testing
+      - acceptance
+      - production
+
+  InstanceType: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+      Description: WebServer EC2 instance type  # --This is to desribe what the parameter about
+      Type: AWS::SSM::Parameter::Value<String> # --Type here is using AWS Specific SSM parameter to store the instancetype in the parameterstore.
+      Default: /jjtech/ec2/instancetype # --The InstanceType is stored using this link in the paramerstore and is being Ref here.
+      # --To do this, go to ssm console --parameterstore and create parameter and put the instancetype in the value section.
+      ConstraintDescription: must be a valid EC2 instance type.  # --A string that explains a constraint when the constraint is violated.
+      # --For example, without a constraint description you will get error message that doesn't explains what the problem is.
+  AMIID:   # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: The EC2 AMI id   # --This is to desribe what the parameter about
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>' # --Type here is using AWS Specific SSM parameter to store the instancetype in the parameterstore.
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2' # --Using the latest AMIID link here makes the template more dynamic.
+    # --one, it allowed you not to hardcode an amiid here and save you time from constantly having to change the AMIID every so often.
+    # --To do this, go to ssm console --parameterstore and click on [Public parameters] --click on [Select a service]
+    # --Select [ami-amazon-linux-latest] and then copy link for latest ami and paste here. And it is ready to Referenced [Ref].
+    # --With this parameter you can run and launch this template in any account or any region.
+    ConstraintDescription: Must be a valid AMI based on the region  # --A string that explains a constraint when the constraint is violated.
+
+  VolumeSize: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: EBS Volume size  # --This is to desribe what the parameter about
+    Type: Number   # --This parameter type is an integer. [Type, Default, and Description are in the same line]
+    Default: 8  # --The default is used to assigned one specific instancetype to be use by the resource.
+    MinValue: 8  # --Using MinValue allows you to defined the minimum size of volume that the user can use
+    MaxValue: 100  # --Using MixValue allows you to defined the miximum size of volume that the user can use
+    ConstraintDescription: must be a number between 8 to 100 Gb # --And the Constraint is use to describe the rules.
+
+  KeyName: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance # --This is to desribe what the parameter about
+    Type: AWS::EC2::KeyPair::KeyName # --Using AWS native here makes the template more dynamic and give the user...
+    # --access to their keypairs and the ability to select what keypair that they want to use in the region they are working from.
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.  # --And the Constraint is use to describe the rules.
+
+  SecurityGroupPorts: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: Simple Description of a Number Parameter, with MinValue and MaxValue # --This is to desribe what the parameter about
+    Type: Number  # --This parameter type is an integer. [Type, AllowedValue, and Description are in the same line]
+    AllowedValues: # --Allowed value is used to define what types of properties[instancetypes] that ia allowed be use.
+      - 80  # --These are the allowed values to choose from when creating the the Server
+      - 443
+      - 22
+          # ---The use of Constraint is optional
+
+  SSHLocation:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: The IP address range that can be used to SSH to the EC2 instances # --This is to desribe what the parameter about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    MinLength: '9'  # --The default is used to assigned one specific instancetype to be use by the resource.
+    MaxLength: '18'  # --Using MixValue allows you to defined the miximum size of volume that the user can use
+    Default: 0.0.0.0/0  # --The default is used to assigned one specific instancetype to be use by the resource.
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})" # --AllowedPattern is used to define what types of pattern that is allowed.
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.  # --And the Constraint is use to describe the rules.
+
+Conditions: # --The optional Conditions section contains statements that define the circumstances under which entities are created or configured.
+  CreateProdResources: !Equals # --Compares if two values are equal. Returns true if the two values are equal or false if they aren't.
+    - !Ref Environment  # --Ref here is being used to reference the the two values that need to be evaluated [Environment] [production]
+    - production  # --In this case !Ref [Environment] is !Equals to [production]. so whenever you run the stack and pick prod, the condition will be true.
+    # --With the condition set, when production run this stack, [EIP] and [S3 bucket] will be created in the resource section
+    # --On the otherhand, If you run this stack under [Dev] or any other department on the list that is [Prod], [EIP] and [S3 bucket] will not be created
+Resources:  # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  EC2Instance:   #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::EC2::Instance # --This section tells you what type of resource that is being created.
+    Properties:   # --Everything that the resource need to operate is under the property section
+      ImageId:  # --The ImageId here is being Ref from the parameter section. [1]
+        Ref: AMIID
+      InstanceType:   # --The InstanceType here is being Ref from the parameter section. [2]
+        Ref: InstanceType
+      SecurityGroups:
+      - Ref: InstanceSecurityGroup  # --The Security Group here is being Ref direct by the WebServer from the resource section. [3]
+      KeyName:
+        Ref: KeyName  # --The KeyPair here is being Ref from the parameter section. [4]
+      BlockDeviceMappings:
+        -
+          DeviceName: /dev/xvda  #--This is mounting port for which to attach your EBS volume
+          Ebs:
+            VolumeType: gp2  # --This tells you the volume type
+            DeleteOnTermination: true   #--This is a Boolean
+            VolumeSize: !Ref VolumeSize  # --The VolumeSize here is being Ref from the parameter section. [5]
+
+  InstanceElasticIP: #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::EC2::EIP   # --This section tells you what type of resource that is being created.
+    Condition: CreateProdResources  # --With the condition set, when production run this stack, [EIP] will be created
+    # --On the otherhand, If you run this stack under [Dev] or any other department on the list that is [Prod], [EIP] will not be created
+    Properties:  # --Everything that the resource need to operate is under the property section
+      InstanceId: !Ref EC2Instance  # --The EIP if Referencing the InstanceId from the resource section
+
+  InstanceSecurityGroup:    #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::EC2::SecurityGroup  # --This section tells you what type of resource that is being created.
+    Properties:   # --Everything that the resource need to operate is under the property section
+      GroupDescription: Enable SSH access via port 22  # --This section tells you what type of resource that is being created.
+      SecurityGroupIngress:  # --Ingress is used to Add an inbound rule to a security group.
+      - IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+        FromPort: !Ref SecurityGroupPorts  # --The FromPort here is being Ref from the parameter section. [The start of port range for the TCP] [1]
+        ToPort: !Ref SecurityGroupPorts # --The ToPort here is being Ref from the parameter section. [The end of port range for the TCP]. [2]
+        CidrIp:
+          Ref: SSHLocation # --The CidrIP here is being Ref from the parameter section. [3]
+
+  S3Bucket:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::S3::Bucket  # --This section tells you what type of resource that is being created
+    Condition: CreateProdResources # --With the condition set, when production run this stack, [S3 bucket] will be created
+    # --On the otherhand, If you run this stack under [Dev] or any other department on the list that is [Prod], [S3 bucket] will not be created
+
+Outputs: # --The optional Outputs section declares output values that you can import into other stacks (to create cross-stack references)
+  InstanceDetails: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: "EC2 Instance details"   # --This is to desribe what the parameter about
+    Value:  # --Value is use for Referencing a value from the resource section.
+      Ref : EC2Instance # --Ref here is being used as GetAtt to get a valuue [InstanceId] from the the resource section after creation
+      # --[InstanceId] is not one of the ReturnValue of an EC2Instance, therefor you cannot use Fn::GetAtt to get that value.
+  AZ:  #-- this part [AZ] is the logicalName. Indent once, then enter [Description].
+    Description: Availability Zone of the newly created EC2 instance  # --This is to desribe what the parameter about
+    Value: !GetAtt  # --Value is use for Referencing a value from the resource section.
+    # --The Fn::GetAtt intrinsic function returns the value of an attribute from a resource in the template.
+    # --The first part is for the [LogicalName of the resource] and
+    # --the second part is the [Attribute, which is the ReturnValue you want to get] [AvailabilityZone]
+      - EC2Instance  # --The first part is for the [LogicalName of the resource]
+      - AvailabilityZone  # --the second part is the [Attribute, which is the ReturnValue you want to get] [AvailabilityZone]
+  PublicDNS:  #-- this part [PublicDNS] is the logicalName. Indent once, then enter [Description].
+    Description: Public DNSName of the newly created EC2 instance  # --This is to desribe what the parameter about
+    Value: !GetAtt  # --Value is use for Referencing a value from the resource section.
+    # --The Fn::GetAtt intrinsic function returns the value of an attribute from a resource in the template.
+    # --The first part is for the [LogicalName of the resource] and
+    # --the second part is the [Attribute, which is the ReturnValue you want to get] [PublicDnsName]
+      - EC2Instance  # --The first part is for the [LogicalName of the resource]
+      - PublicDnsName  # --the second part is the [Attribute, which is the ReturnValue you want to get] [PublicDnsName]
+  PublicIP:   #-- this part [PublicIP] is the logicalName. Indent once, then enter [Description].
+    Description: Public IP address of the newly created EC2 instance   # --This is to desribe what the parameter about
+    Value: !GetAtt   # --Value is use for Referencing a value from the resource section.
+    # --The Fn::GetAtt intrinsic function returns the value of an attribute from a resource in the template.
+    # --The first part is for the [LogicalName of the resource] and
+    # --the second part is the [Attribute, which is the ReturnValue you want to get] [PublicIp]
+      - EC2Instance  # --The first part is for the [LogicalName of the resource]
+      - PublicIp  # --the second part is the [Attribute, which is the ReturnValue you want to get] [PublicIp]
+  SecurityGroupId:   #-- this part [SecurityGroupId] is the logicalName. Indent once, then enter [Description].
+    Description: Public IP address of the newly created EC2 instance  # --This is to desribe what the parameter about
+    Value: !GetAtt   # --Value is use for Referencing a value from the resource section.
+    # --The Fn::GetAtt intrinsic function returns the value of an attribute from a resource in the template.
+    # --The first part is for the [LogicalName of the resource] and
+    # --the second part is the [Attribute, which is the ReturnValue you want to get] [GroupId] or [VpcId]
+      - InstanceSecurityGroup  # --The first part is for the [LogicalName of the resource]
+      - GroupId  # --the second part is the [Attribute, which is the ReturnValue you want to get] [GroupId] or [VpcId]

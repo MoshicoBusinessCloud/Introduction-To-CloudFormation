@@ -1,0 +1,61 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"  # --This tells you the template version
+Description: Template to attach security groups & elastic ip's   # --This is to desribe what the template is about
+# --When you need to update a stack, understanding how your changes will affect running resources before you implement..
+# --them can help you update stacks with confidence.
+# --Change sets allow you to preview how proposed changes to a stack might impact your running resources,..
+# --for example, whether your changes will delete or replace any critical resources,..
+# --AWS CloudFormation makes the changes to your stack only when you decide to execute the change set, allowing you to decide..
+# --whether to proceed with your proposed changes or explore other changes by creating another change set.
+# --You can also use cloudformation to detect [Drift] in your evironment. you can use lamda to automate you environment to detect drift
+
+Resources:  # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  MyInstance:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Type: AWS::EC2::Instance  # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      AvailabilityZone: us-east-1a  # --This is the [AZ][us-east-1] where the instance will bo created. This is hard-coded
+      ImageId: "ami-0022f774911c1d690" # --This [AMI] is from the same [AZ][us-east-1] where the instance will bo created. This is hard-coded
+      InstanceType: t2.micro  # --A compute instance can be software or hardware which can run code, for example a CPU or GPU
+      SecurityGroups:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+        - !Ref SSHSecurityGroup  # --The Security Group here is being Ref direct by the MyInstance from the resource section. [3]
+        - !Ref ServerSecurityGroup  # --The Security Group here is being Ref direct by the MyInstance from the resource section. [3]
+      Tags: # --You can Resource Tags property to apply tags to resources, which can help you identify and categorize those resources.
+        - Key: Name  # --The key [Name] of the tag
+          Value: demo-ec2  # --The value for the tag. You can specify a value that's 1 to 256 characters in length.
+        - Key: createdBy  # --The key [Name] of the tag
+          Value: DevOps Team  # --The value for the tag. You can specify a value that's 1 to 256 characters in length.
+        - Key: Reason   # --The key [Name] of the tag
+          Value: Learning changesets concepts  # --The value for the tag. You can specify a value that's 1 to 256 characters in length.
+
+
+  # an elastic IP for our instance
+  MyEIP:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::EC2::EIP   # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      InstanceId: !Ref MyInstance  # --The EIP if Referencing the InstanceId from the resource section
+
+  # our EC2 security group
+  SSHSecurityGroup:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::EC2::SecurityGroup  # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      GroupDescription: Enable SSH access via port 22  # --This is to desribe what the parameter about
+      SecurityGroupIngress:   # --Ingress is used to Add an inbound rule to a security group.
+      - CidrIp: 0.0.0.0/0  # --Allow all traffic [IN] and [OUT] from the Internet
+        FromPort: 22   # --Allow all traffic [IN] from [port-22]
+        IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+        ToPort: 22   # --Allow all traffic [OUT] from [port-22]
+
+  # our second EC2 security group
+  ServerSecurityGroup:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: 'AWS::EC2::SecurityGroup'  # --This section tells you what type of resource that is being created.
+    Properties:   # --Everything that the resource need to operate is under the property section
+      GroupDescription: allow connections from specified CIDR ranges  # --This is to desribe what the parameter about
+      SecurityGroupIngress:  # --Ingress is used to Add an inbound rule to a security group.
+        - IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+          FromPort: '80' # --Allow all traffic [IN] from [port-80]
+          ToPort: '80' # --Allow all traffic [OUT] from [port-80]
+          CidrIp: 0.0.0.0/0  # --Allow all traffic [IN] and [OUT] from the Internet
+        - IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+          FromPort: '22'  # --Allow all traffic [IN] from [port-22]
+          ToPort: '22'  # --Allow all traffic [OUT] from [port-22]
+          CidrIp: 192.168.1.1/32

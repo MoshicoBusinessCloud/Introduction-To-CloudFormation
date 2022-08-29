@@ -1,0 +1,76 @@
+# Nasted templates
+# Dependencies: Create an s3 bucket and upload security-group.yml & ec2.yml
+# & refer those endpoints while creatint this main template.
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template to create nasted templates
+# --This template and two other templates are used to simulate how [Nested Stacks] work
+# --Nested stacks are stacks created as part of other stacks. You create a nested stack within another stack
+# --Stack A,[Parent-stack] is the root stack for [b, c] and all the other, nested, stacks in the hierarchy.
+# --Nested stacks can themselves contain other nested stacks, resulting in a hierarchy of stacks
+# --For stack B, stack A is both the parent stack, and the root stack.
+# --For stack D, stack C is the parent stack; while for stack C, stack B is the parent stack.
+
+# -----------------THIS TEMPLATE WILL CREATE THE [PARENT] AND THE TWO [KIDS] STACKS----------------------#
+# --THIS IS THE ONLY STACK TO RUN AND WHATEVER YOU DO ON THIS STACK WILL BE TRANSFER TO THE KIDS STACKS---#
+
+Parameters: # --# --The parameter section is used to avoid hardcoding and to make the template [Dynamic]. [Indent [here] before starting next line]
+
+  VPCId: #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Description: VPC to create the security group and EC2 instance into  # --This is to desribe what this parameter is about
+    Type: AWS::EC2::VPC::Id  # --This section tells you what type of resource that is being created. [This will create Dropdown window]
+
+  SGTemplateURL: # --This parameter is create window for you to enter the SGTemplate [URL] for one the child stack-start
+  # --To do this; first you have to create a S3-bucket if dont already have one. upload the SGTemplate into the bucket and copy the file [URL]
+    Description: URL of the nested Security group stack template  # --This is to desribe what this parameter is about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+
+  EC2TemplateURL: # --This parameter is create window for you to enter the InstanceTemplate [URL] for one the child stack-start
+  # --To do this; first you have to create a S3-bucket if dont already have one. upload the InstanceTemplate into the bucket and copy the file [URL]
+    Description: URL of the nested EC2 instance stack template  # --This is to desribe what this parameter is about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+
+  InstanceType: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: Type of EC2 instance  # --This is to desribe what the parameter about
+    Type: "String" # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    Default: "t2.micro" # --The default is used to assigned one specific instancetype to be use by the resource.
+
+  ImageId: # --Enter [LogicalName] This ImageId will be Ref in the resource section. [Indent [here] before starting next line]
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    Default: ami-0cff7528ff583bf9a # --The default is used to assigned one specific [AMI] to be use by the resource
+    # --[NOTE] The [AMIId] here is different from the one in the child stack, during creation of the stack, this AMIId will be passed on to the child.
+
+
+Resources: # --The Resource section is manditory for a template to be valid. Indent once, then enter [logicalName --WebServer].
+  SSHSecurityGroupStack:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::CloudFormation::Stack  # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      TemplateURL: !Ref SGTemplateURL  # --The [SGTemplateURL] here is being Ref from the Parameters section. [3]
+      Parameters: # --This parameter is place here for stuff that need to pass on to the security group during creation
+        ApplicationName: !Ref AWS::StackName #--The [StackName] here is beimg Ref from the parameter section...
+        # --and what ever [Name] the entered will be passed on to the child [SSHSecurityGroupStack]
+        VPCId: !Ref VPCId #--The [VPCId] here is beimg Ref from the parameter section and will be passed on to the Instance
+      TimeoutInMinutes: 5  # --The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state.
+
+  EC2InstanceStack:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: AWS::CloudFormation::Stack  # --This section tells you what type of resource that is being created.
+    Properties:  # --Everything that the resource need to operate is under the property section
+      TemplateURL: !Ref EC2TemplateURL  # --The [EC2TemplateURL] here is being Ref from the Parameters section. [3]
+      Parameters:  # --This parameter is place here for stuff that need to pass on to the Instance during creation
+        InstanceType: !Ref InstanceType #--The [InstanceType] here is beimg Ref from the parameter section and will be passed on to the Instance
+        ImageId: !Ref ImageId #--The [ImageId] here is beimg Ref from the parameter section and will be passed on to the Instance
+        SecurityGroupId: !GetAtt SSHSecurityGroupStack.Outputs.SSHGroupId # --The [Securoty GroupId] attention is needed here!
+        # --The [!GatAtt Intrisic fuction] is used here to go find this LogicalName -->>[SSHSecurityGroupStack] from the other child's stack
+        # --Once the LogicalName is found, go to the [Outputs] section of [SSHSecurityGroupStack] and grab the [SSHGroupId]
+      TimeoutInMinutes: 10 # --The length of time, in minutes, that CloudFormation waits for the nested stack to reach the CREATE_COMPLETE state.
+      # --
+Outputs: # --The optional Outputs section declares output values that you can import into other stacks (to create cross-stack references)
+  SGStack:  # --Enter [LogicalName]. [Indent [here] before starting next line]
+    Value: !Ref SSHSecurityGroupStack # --Value is use for Referencing a value from the resource section.
+    # --Ref here is being used to get the [LogicalName]=[SSHSecurityGroupStack] from the resources section and have it displayed on the Outputs section.
+    Description: Security group stack  # --This is to desribe what this part of the outputs is doing
+
+  EC2Stack: # --Enter [LogicalName]. [Indent [here] before starting next line]
+    Value: !Ref EC2InstanceStack  # --Value is use for Referencing a value from the resource section.
+    # --Ref here is being used to get the [LogicalName]=[EC2InstanceStack] from the resources section and have it displayed on the Outputs section.
+    Description: EC2 instance stack  # --This is to desribe what this part of the outputs is doing

@@ -1,0 +1,493 @@
+# In this template we are going to discuss about the cfn init
+# !Sub function
+#Ref : https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-init.html
+#Ref : https://gist.github.com/Jeffen/dfb10975829e99a308e966d7fa4dfe49
+
+---
+AWSTemplateFormatVersion: 2010-09-09  # --This tells you the template version
+Description: >-  # --This is to desribe what the template is about
+  AWS CloudFormation Sample Template LAMP_Single_Instance: Create a LAMP stack
+  using a single EC2 instance and a local MySQL database for storage. This
+  template demonstrates using the AWS CloudFormation bootstrap scripts to
+  install the packages and files necessary to deploy the Apache web server, PHP
+  and MySQL at instance launch time. **WARNING** This template creates an Amazon
+  EC2 instance. You will be billed for the AWS resources used if you create a
+  stack from this template.
+Parameters:
+  KeyName: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance # --This is to desribe what the parameter about
+    Type: AWS::EC2::KeyPair::KeyName # --Using AWS native here makes the template more dynamic and give the user...
+    # --access to their keypairs and the ability to select what keypair that they want to use in the region they are working from.
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.  # --And the Constraint is use to describe the rules.
+  DBName:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+  # --This paramrter is used to defined the rules and conditions when naming your database during deployment
+    Default: MyDatabase  # --The default is used to assigned one specific instancetype to be use by the resource.
+    Description: MySQL database name  # --This is to desribe what the parameter about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    MinLength: '9'  # --Using MinValue allows you to defined the minimum size of volume that the user can use
+    MaxLength: '64'   # --Using MixValue allows you to defined the maximum lenght of chracters that the user can use
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*' # --AllowedPattern is used to define what types of pattern that is allowed.
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters. # --And the Constraint is use to describe the rules.
+  DBUser:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+  # --This paramrter is used to defined the rules and conditions when creating a [UserNane] to login to MSQL database during deployment
+    NoEcho: 'true' # --[NoEcho] is used to mask the parameter value to prevent it from being displayed in the console when it is set to [true].
+    Description: Username for MySQL database access  # --This is to desribe what the parameter about
+    Type: String   # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    MinLength: '1'  # --Using MinValue allows you to defined the minimum size of volume that the user can use
+    MaxLength: '16'   # --Using MixValue allows you to defined the maximum lenght of chracters that the user can use
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'  # --AllowedPattern is used to define what types of pattern that is allowed.
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters. # --And the Constraint is use to describe the rules.
+  DBPassword:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+  # --This paramrter is used to defined the rules and conditions when creating a [Passwood] to login to MSQL database during deployment
+    NoEcho: 'true' # --[NoEcho] is used to mask the parameter value to prevent it from being displayed in the console when it is set to [true].
+    Description: Password for MySQL database access  # --This is to desribe what the parameter about
+    Type: String   # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    MinLength: '1'  # --Using MinValue allows you to defined the minimum size of volume that the user can use
+    MaxLength: '41'   # --Using MixValue allows you to defined the maximum lenght of chracters that the user can use
+    AllowedPattern: '[a-zA-Z0-9]*'  # --AllowedPattern is used to define what types of pattern that is allowed.
+    ConstraintDescription: must contain only alphanumeric characters. # --And the Constraint is use to describe the rules.
+  DBRootPassword:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+  # --This paramrter is used to defined the rules and conditions when creating a [Passwood] to login to MSQL database during deployment
+    NoEcho: 'true'  # --[NoEcho] is used to mask the parameter value to prevent it from being displayed in the console when it is set to [true].
+    Description: Root password for MySQL  # --This is to desribe what the parameter about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    MinLength: '1'  # --Using MinValue allows you to defined the minimum size of volume that the user can use
+    MaxLength: '41'   # --Using MixValue allows you to defined the maximum lenght of chracters that the user can use
+    AllowedPattern: '[a-zA-Z0-9]*'  # --AllowedPattern is used to define what types of pattern that is allowed.
+    ConstraintDescription: must contain only alphanumeric characters. # --And the Constraint is use to describe the rules.
+  InstanceType: # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+      Description: WebServer EC2 instance type  # --This is to desribe what the parameter about
+      Type: "String" # --This parameter type is a string. [Type, Default, and Description are in the same line]
+      Default: "t2.small" # --The default is used to assigned one specific instancetype to be use by the resource.
+      AllowedValues: # --Allowed value is used to define what types of properties[instancetypes] that ia allowed be use.
+      - t1.micro # --These are the allowed values to choose from when creating the the Server
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      ConstraintDescription: must be a valid EC2 instance type.  # --A string that explains a constraint when the constraint is violated.
+  SSHLocation:  # --Enter [LogicalName] This InstanceType will be Ref in the resource section. [Indent [here] before starting next line]
+    Description: The IP address range that can be used to SSH to the EC2 instances # --This is to desribe what the parameter about
+    Type: String  # --This parameter type is a string. [Type, Default, and Description are in the same line]
+    MinLength: '9'  # --Using MinValue allows you to defined the minimum size of volume that the user can use
+    MaxLength: '18'  # --Using MixValue allows you to defined the maximum lenght of chracters that the user can use
+    Default: 0.0.0.0/0  # --The default is used to assigned one specific instancetype to be use by the resource.
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})" # --AllowedPattern is used to define what types of pattern that is allowed.
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.  # --A string that explains a constraint when the constraint is violated.
+Mappings:  # --The optional Mappings section matches a key to a corresponding set of named values. For example, if you want to set values..
+    # --based on a region, you can create a mapping that uses the region name as a key and contains the values you want to specify for each specific region.
+    # --You use the Fn::FindInMap intrinsic function to retrieve values in a map.
+  AWSInstanceType2Arch: # --This is used for cfn to use the right instancetype during launch time
+    t1.micro:
+      Arch: HVM64
+    t2.nano:
+      Arch: HVM64
+    t2.micro:
+      Arch: HVM64
+    t2.small:
+      Arch: HVM64
+    t2.medium:
+      Arch: HVM64
+
+  AWSInstanceType2NATArch:  # --This is used for cfn to use the right instancetype during launch time
+    t1.micro:
+      Arch: NATHVM64
+    t2.nano:
+      Arch: NATHVM64
+    t2.micro:
+      Arch: NATHVM64
+    t2.small:
+      Arch: NATHVM64
+    t2.medium:
+      Arch: NATHVM64
+
+  AWSRegionArch2AMI:  # --This is used for cfn to use the right AMI to the specific region where the template is being deployed
+    af-south-1:
+      HVM64: ami-064cc455f8a1ef504
+      HVMG2: NOT_SUPPORTED
+    ap-east-1:
+      HVM64: ami-f85b1989
+      HVMG2: NOT_SUPPORTED
+    ap-northeast-1:
+      HVM64: ami-0b2c2a754d5b4da22
+      HVMG2: ami-09d0e0e099ecabba2
+    ap-northeast-2:
+      HVM64: ami-0493ab99920f410fc
+      HVMG2: NOT_SUPPORTED
+    ap-northeast-3:
+      HVM64: ami-01344f6f63a4decc1
+      HVMG2: NOT_SUPPORTED
+    ap-south-1:
+      HVM64: ami-03cfb5e1fb4fac428
+      HVMG2: ami-0244c1d42815af84a
+    ap-southeast-1:
+      HVM64: ami-0ba35dc9caf73d1c7
+      HVMG2: ami-0e46ce0d6a87dc979
+    ap-southeast-2:
+      HVM64: ami-0ae99b503e8694028
+      HVMG2: ami-0c0ab057a101d8ff2
+    ca-central-1:
+      HVM64: ami-0803e21a2ec22f953
+      HVMG2: NOT_SUPPORTED
+    cn-north-1:
+      HVM64: ami-07a3f215cc90c889c
+      HVMG2: NOT_SUPPORTED
+    cn-northwest-1:
+      HVM64: ami-0a3b3b10f714a0ff4
+      HVMG2: NOT_SUPPORTED
+    eu-central-1:
+      HVM64: ami-0474863011a7d1541
+      HVMG2: ami-0aa1822e3eb913a11
+    eu-north-1:
+      HVM64: ami-0de4b8910494dba0f
+      HVMG2: ami-32d55b4c
+    eu-south-1:
+      HVM64: ami-08427144fe9ebdef6
+      HVMG2: NOT_SUPPORTED
+    eu-west-1:
+      HVM64: ami-015232c01a82b847b
+      HVMG2: ami-0d5299b1c6112c3c7
+    eu-west-2:
+      HVM64: ami-0765d48d7e15beb93
+      HVMG2: NOT_SUPPORTED
+    eu-west-3:
+      HVM64: ami-0caf07637eda19d9c
+      HVMG2: NOT_SUPPORTED
+    me-south-1:
+      HVM64: ami-0744743d80915b497
+      HVMG2: NOT_SUPPORTED
+    sa-east-1:
+      HVM64: ami-0a52e8a6018e92bb0
+      HVMG2: NOT_SUPPORTED
+    us-east-1:
+      HVM64: ami-032930428bf1abbff
+      HVMG2: ami-0aeb704d503081ea6
+    us-east-2:
+      HVM64: ami-027cab9a7bf0155df
+      HVMG2: NOT_SUPPORTED
+    us-west-1:
+      HVM64: ami-088c153f74339f34c
+      HVMG2: ami-0a7fc72dc0e51aa77
+    us-west-2:
+      HVM64: ami-01fee56b22f308154
+      HVMG2: ami-0fe84a5b4563d8f27
+Resources:
+  WebServerInstance:
+    Type: 'AWS::EC2::Instance'
+    Metadata:
+      'AWS::CloudFormation::Init': # --This AWS::CloudFormation::Init is used to include metadata on an Amazon EC2 instance for the cfn-init helper script.
+        configSets: # --If you want to create more than one config key and to have cfn-init process them in a specific order,..
+                    # -- create a configset that contains the config keys in the desired order.
+          InstallAndRun: # --This is used to install and run the configsets
+            - Install
+            - Configure
+        Install: # --This part is used to install the list of packages bellow
+          packages:
+            yum:
+              mysql: []
+              mysql-server: []
+              mysql-libs: []
+              httpd: []
+              php: []
+              php-mysql: []
+          files:   # --This part is used to install the list of files bellow
+            /var/www/html/index.php:
+              content: !Join
+                - ''
+                - - |
+                    <html>  # --This is an html file. [html] is used to create website. It contains head and body
+                  - |2
+                      <head>
+                  - |2  # --This part is the head of the file. It is used to displayed the title of the file
+                        <title>AWS CloudFormation PHP Sample</title>
+                  - |2
+                        <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+                  - |2   # --You close the head of the file here
+                      </head>
+                  - |2
+                      <body>
+                  - |2  # --From this part of the file going down is the body of the file. And everything that the body contais are the subject of the file
+                        <h1>Welcome to the AWS CloudFormation PHP Sample</h1>
+                  - |2
+                        <p/>
+                  - |2
+                        <?php
+                  - |2
+                          // Print out the current data and time
+                  - |2   # --All the informations that you want to convened together on the file goes on the body
+                          print "The Current Date and Time is: <br/>";
+                  - |2
+                          print date("g:i A l, F j Y.");
+                  - |2
+                        ?>
+                  - |2
+                        <p/>
+                  - |2
+                        <?php
+                  - |2
+                          // Setup a handle for CURL
+                  - |2
+                          $curl_handle=curl_init();
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_CONNECTTIMEOUT,2);
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_RETURNTRANSFER,1);
+                  - |2
+                          // Get the hostname of the intance from the instance metadata
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/public-hostname');
+                  - |2
+                          $hostname = curl_exec($curl_handle);
+                  - |2
+                          if (empty($hostname))
+                  - |2
+                          {
+                  - |2
+                            print "Sorry, for some reason, we got no hostname back <br />";
+                  - |2
+                          }
+                  - |2
+                          else
+                  - |2
+                          {
+                  - |2
+                            print "Server = " . $hostname . "<br />";
+                  - |2
+                          }
+                  - |2
+                          // Get the instance-id of the intance from the instance metadata
+                  - |2
+                          curl_setopt($curl_handle,CURLOPT_URL,'http://169.254.169.254/latest/meta-data/instance-id');
+                  - |2
+                          $instanceid = curl_exec($curl_handle);
+                  - |2
+                          if (empty($instanceid))
+                  - |2
+                          {
+                  - |2
+                            print "Sorry, for some reason, we got no instance id back <br />";
+                  - |2
+                          }
+                  - |2
+                          else
+                  - |2
+                          {
+                  - |2
+                            print "EC2 instance-id = " . $instanceid . "<br />";
+                  - |2
+                          }
+                  - |2
+                          $Database   = "localhost";
+                  - '      $DBUser     = "'
+                  - !Ref DBUser  # --This part of the file is Referencing [DBUser]=[LogicalName] from the Parameters section. [1]
+                  - |
+                    ";
+                  - '      $DBPassword = "'
+                  - !Ref DBPassword  # --This part of the file is Referencing [DBPassword]=[LogicalName] from the Parameters section. [1]
+                  - |
+                    ";
+                  - |2
+                          print "Database = " . $Database . "<br />";
+                  - |2
+                          $dbconnection = mysql_connect($Database, $DBUser, $DBPassword)
+                  - |2
+                                          or die("Could not connect: " . mysql_error());
+                  - |2
+                          print ("Connected to $Database successfully");
+                  - |2
+                          mysql_close($dbconnection);
+                  - |2
+                        ?>
+                  - |2
+                        <h2>PHP Information</h2>
+                  - |2
+                        <p/>
+                  - |2
+                        <?php
+                  - |2
+                          phpinfo();
+                  - |2
+                        ?>
+                  - |2   # --The body of the file ends here
+                      </body>
+                  - |
+                    </html>
+              mode: '000600'
+              owner: apache
+              group: apache
+            /tmp/setup.mysql:
+              content: !Join
+                - ''
+                - - 'CREATE DATABASE '
+                  - !Ref DBName  # --This part of the file is Referencing [DBName]=[LogicalName] from the Parameters section. [1]
+                  - |
+                    ;
+                  - 'GRANT ALL ON '
+                  - !Ref DBName  # --This part of the file is Referencing [DBName]=[LogicalName] from the Parameters section. [1]
+                  - .* TO '
+                  - !Ref DBUser  # --This part of the file is Referencing [DBUser]=[LogicalName] from the Parameters section. [1]
+                  - '''@localhost IDENTIFIED BY '''
+                  - !Ref DBPassword   # --This part of the file is Referencing [DBPassword]=[LogicalName] from the Parameters section. [1]
+                  - |
+                    ';
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Join
+                - ''
+                - - |
+                    [main]
+                  - stack=
+                  - !Ref 'AWS::StackId'  # --This part of the file is Referencing [AWS::StackId]=[LogicalName] after deployment of the stack.
+                  - |+
+
+                  - region=
+                  - !Ref 'AWS::Region'  # --This part of the file is Referencing [AWS::Region]=[LogicalName] from the Mappings section. [1]
+                  - |+
+
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Join
+                - ''
+                - - |
+                    [cfn-auto-reloader-hook]
+                  - |
+                    triggers=post.update
+                  - > # --This is the path by which the file is neing create [Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init]
+                    path=Resources.WebServerInstance.Metadata.AWS::CloudFormation::Init
+                  - 'action=/opt/aws/bin/cfn-init -v '
+                  - '         --stack '
+                  - !Ref 'AWS::StackName'  # --This part of the file is Referencing [WebServerInstance] $ [InstallAndRun] the name of the stack during drployment.
+                  - '         --resource WebServerInstance ' # --This is the [LogicalName] of the Instance
+                  - '         --configsets InstallAndRun '  # --This is the [LogicalName] of the packages and file to be installed
+                  - '         --region '
+                  - !Ref 'AWS::Region'  # --This part of the file is Referencing [AWS::Region]=[LogicalName] from the Mappings section. [1]
+                  - |+
+
+                  - |
+                    runas=root
+              mode: '000400'
+              owner: root
+              group: root
+          services:  # --This part of the code is giving permission to cfn to start and run thefiles that has been installed
+            sysvinit:
+              mysqld:  # --After [MYSQL] has been installed, kickstart and make sure it is running
+                enabled: 'true'
+                ensureRunning: 'true'
+              httpd:   # --After [httpd] has been installed, kickstart and make sure it is running
+                enabled: 'true'
+                ensureRunning: 'true'
+              cfn-hup:   # --After [cfn-hup] has been installed, kickstart and make sure it is running
+                enabled: 'true'
+                ensureRunning: 'true'
+                files:  # --After the [files] has been created,displyed the files
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+        Configure:
+          commands:
+            01_set_mysql_root_password:
+              command: !Join
+                - ''
+                - - mysqladmin -u root password ' # --This is asking the rootuser to enter a password before deploying the template
+                  - !Ref DBRootPassword  # --This part of the file is Referencing [DBRootPassword]=[LogicalName] from the Parameters section. [1]
+                  - ''''
+              test: !Join
+                - ''
+                - - '$(mysql '
+                  - !Ref DBName  # --This part of the file is Referencing [DBName]=[LogicalName] from the Parameters section. [1]
+                  - ' -u root --password='''
+                  - !Ref DBRootPassword  # --This part of the file is Referencing [DBRootPassword]=[LogicalName] from the Parameters section. [1]
+                  - ''' >/dev/null 2>&1 </dev/null); (( $? != 0 ))'
+            02_create_database:
+              command: !Join
+                - ''
+                - - mysql -u root --password='
+                  - !Ref DBRootPassword  # --This part of the file is Referencing [DBRootPassword]=[LogicalName] from the Parameters section. [1]
+                  - ''' < /tmp/setup.mysql'
+              test: !Join
+                - ''
+                - - '$(mysql '
+                  - !Ref DBName  # --This part of the file is Referencing [DBName]=[LogicalName] from the Parameters section. [1]
+                  - ' -u root --password='''
+                  - !Ref DBRootPassword  # --This part of the file is Referencing [DBRootPassword]=[LogicalName] from the Parameters section. [1]
+                  - ''' >/dev/null 2>&1 </dev/null); (( $? != 0 ))'
+    Properties:
+      ImageId: !FindInMap   # --The ImageId attention is needed here!
+      # --[AWS::Region] -->Returns a string representing the Region in which the encompassing resource is being created, such as us-west-2.
+      # --FindInMap here is being used to find this logicalName-->[AWSRegionArch2AMI] where you will find the list of the region AMIs in the Mappings section.
+      # --The Ref function here is using one of AWS specific Pseudo-parameter [AWS::Region] to get the region code, example [us-east-1]
+      # --The [Arch2AMI] is used to Ref the AMI of the region where you deployed your stack.
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - !FindInMap  # --The InstanceType attention is needed here!
+        # --FindInMap here is being used to find this logicalName-->[AWSInstanceType2Arch] where the InstanceTypes are assigned in the Mappings section.
+        # --The Ref function is being used to reference -->[InstanceType] where you will find the available instancetype to use.
+          - AWSInstanceType2Arch
+          - !Ref InstanceType
+          - Arch
+      InstanceType: !Ref InstanceType  # --The Ref function is being used to reference -->[InstanceType] where you will find the available instancetype to use.
+      SecurityGroups:
+        - !Ref WebServerSecurityGroup  # --The Security GroupId here is being Ref direct by the [WebServerInstance] from the resource section. [3]
+      KeyName: !Ref KeyName  # --The KeyPair here is being Ref from the parameter section. [4]
+      UserData: !Base64  #--The intrinsic function Fn::Base64 returns the Base64 representation of the input string.
+      #--In other words, [Fn::Base64] is used to hold and passed the userdata after the instance have been created
+
+        'Fn::Join':  # --The intrinsic function Fn::Join appends(Add) a set of values into a single value, separated by the specified delimiter.
+          - ''
+          - - |  #[DELETE] --The [Pipe symbol "|"] is used to tell cfn that all the lines in the userdata are part of one string.
+              #!/bin/bash -xe
+            - |  #[DELETE] --The [Pipe symbol "|"] is used to tell cfn that all the lines in the userdata are part of one string.
+              yum update -y aws-cfn-bootstrap
+            - |
+              # Install the files and packages from the metadata
+            - '/opt/aws/bin/cfn-init -v '
+            - '         --stack '
+            - !Ref 'AWS::StackName' # --This part of the file is Referencing [WebServerInstance] $ [InstallAndRun] the name of the stack during drployment.
+            - '         --resource WebServerInstance ' # --This is the [LogicalName] of the Instance
+            - '         --configsets InstallAndRun '  # --This is the [LogicalName] of the packages and file to be installed
+            - '         --region '
+            - !Ref 'AWS::Region'
+            - |+
+  # --One of the benefit of using cfn-init is that it waits until all packages and files has been fully installed on the Instance..
+  # --before sendding a signal of success to cloudformation to decleared stack completion. Bellow is the configuration to do so.
+            - |
+              # Signal the status from cfn-init
+            - '/opt/aws/bin/cfn-signal -e $? ' # --Once successfully installed, send a signal!
+            - '         --stack '
+            - !Ref 'AWS::StackName' # --Go to the resource section and get the name of the stack bellow
+            - '         --resource WebServerInstance ' # --Stack [WebServerInstance]
+            - '         --region '
+            - !Ref 'AWS::Region'
+            - |+
+
+    CreationPolicy: # --This is the policy used to estabished the time frame to which a signal should be send
+      ResourceSignal:  # --The type of signal that need to be sent
+        Timeout: PT5M  # --The time limit to send the signal
+  WebServerSecurityGroup:  #-- this part is for the logicalName. Indent once, then enter [Type:].
+    Type: 'AWS::EC2::SecurityGroup'  # --This section tells you what type of resource that is being created.
+    Properties:   # --Everything that the resource need to operate is under the property section
+      GroupDescription: Enable HTTP access via port 80 # --This section tells you what type of traffic allowd to get to the instance
+      SecurityGroupIngress:  # --Ingress is used to Add an inbound rule to a security group.
+        - IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+          FromPort: '80' # --Allow all traffic [IN] from [port-80]
+          ToPort: '80' # --Allow all traffic [OUT] from [port-80]
+          CidrIp: 0.0.0.0/0  # --Allow all traffic [IN] and [OUT] from the Internet
+        - IpProtocol: tcp  # --The IP protocol name (tcp, udp, icmp, icmpv6)
+          FromPort: '22'  # --Allow all traffic [IN] from [port-22]
+          ToPort: '22'  # --Allow all traffic [OUT] from [port-22]
+          CidrIp: !Ref SSHLocation  # --To know the types of Cidr range that can be use to ssh into the instance, check the parameter section. [3]
+Outputs: # --The optional Outputs section declares output values that you can import into other stacks (to create cross-stack references)
+  WebsiteURL:  #-- this part [PublicIP] is the logicalName. Indent once, then enter [Description].
+    Description: URL for newly created LAMP stack  # --This is to desribe what the parameter about
+    Value: !Join  # --Value is use for Referencing a value from the resource section.
+  # --The intrinsic function Fn::Join appends(Add) a set of values into a single value, separated by the specified delimiter.
+      - ''
+      - - 'http://'
+        - !GetAtt  # --The Fn::GetAtt intrinsic function returns the value of an attribute from a resource in the template.
+        # --The first part is for the [LogicalName of the resource] and
+        # --the second part is the [Attribute, which is the ReturnValue you want to get] [PublicDnsName]
+          - WebServerInstance  # --The first part is for the [LogicalName of the resource]
+          - PublicDnsName  # --the second part is the [Attribute, which is the ReturnValue you want to get] [PublicDnsName]
